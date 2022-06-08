@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ScrapperController } from './scrapper.controller';
+import { ScrapperController } from '../scrapper.controller';
 
 describe('ScrapperController', () => {
   let controller: ScrapperController;
