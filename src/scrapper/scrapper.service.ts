@@ -1,23 +1,29 @@
-import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import * as puppeteer from 'puppeteer';
 import { Page } from 'puppeteer';
 import { Browser } from 'puppeteer';
+import { ScrapperQueryDto } from './dto/scrapper.dto';
 @Injectable()
 export class ScrapperService {
 
     private readonly googleUrl = `https://google.com/search?q=`
+    private page !: Page;
 
-    async searchLinkedInProfile(query: string): Promise<void> {
-        const browser = await puppeteer.launch();
-        const page = await browser.newPage();
+    async searchLinkedInProfile(query: ScrapperQueryDto): Promise<void> {
+        const browser: Browser = await puppeteer.launch({
+            headless: false,
+            args: ['--headless'],
+        });
+        this.page = await browser.newPage();
+        await this.page.setViewport({ width: 1000, height: 926 })
 
         const result = []
-        const googlinks = await this.openGoogle(page, query);
+        const googlinks = await this.openGoogle(query.queries);
         for (let x = 0; x < googlinks.length; x++) {
             const link = googlinks[x];
             console.log('[ ' + x + ' ] ' + link)
-            const objprofile = await this.scrapLinkedin(page, link)
-            objprofile.link = link;
+            const objprofile = await this.scrapLinkedin(link)
+            objprofile['link'] = link;
             result.push(objprofile);
         }
 
@@ -25,10 +31,12 @@ export class ScrapperService {
     }
 
 
-    async openGoogle(page: Page, query: string): Promise<any> {
-        await page.goto(`${this.googleUrl}${this.parseQuery(query)}`, { waitUntil: 'networkidle2' });
+    async openGoogle(query: string): Promise<any> {
+        await this.page.goto(`${this.googleUrl}${this.parseQuery(query)}`, { waitUntil: 'networkidle2' });
 
-        const googleLinks = await page.evaluate(() => {
+        await this.waitUntil(1000);
+
+        const googleLinks = await this.page.evaluate(() => {
             const listGresult = document.querySelectorAll('.g');
             const linkresult = []
             for (let x = 0; x < listGresult.length; x++) {
@@ -45,18 +53,20 @@ export class ScrapperService {
         return googleLinks;
     }
 
-    async scrapLinkedin(page: Page, link) {
-        const objprofile = await page.evaluate(() => {
-            const frameElem = document.querySelector(".display-flex.mt2");
+    async scrapLinkedin(link) {
+        await this.page.goto(link);
+        await this.waitUntil(1000);
+        const objprofile = await this.page.evaluate(() => {
+            const frameElem = document.querySelector(".ph5 .mt2");
 
-            const nameElem = frameElem.querySelector('.pv-top-card--list.align-items-center>li')
+            const nameElem = frameElem.querySelector('.pv-text-details__left-panel .text-heading-xlarge')
             const name = nameElem.textContent.trim()
 
-            const headlineElem = frameElem.querySelector('h2');
+            const headlineElem = frameElem.querySelector('.pv-text-details__left-panel .text-body-medium');
             const headline = headlineElem.textContent.trim()
 
 
-            const countryElem = frameElem.querySelector('.pv-top-card--list.pv-top-card--list-bullet.mt1>li')
+            const countryElem = frameElem.querySelector('.pb2 .text-body-small')
             const country = countryElem.textContent.trim();
 
             const obj = {
@@ -74,6 +84,10 @@ export class ScrapperService {
         const queryEnconded: string = encodeURIComponent(queryString);
 
         return queryEnconded;
+    }
+
+    private waitUntil(time) {
+        return new Promise((r) => setTimeout(r, time))
     }
 
 }
