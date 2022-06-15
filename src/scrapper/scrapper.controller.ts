@@ -7,7 +7,7 @@ export class ScrapperController {
     constructor(private readonly service: ScrapperService) { }
 
     @Get()
-    async search(@Query() queries: ScrapperQueryDto) {
-        return this.service.searchLinkedInProfile(queries);
+    async search(@Query() query: ScrapperQueryDto): Promise<any> {
+        return this.service.searchLinkedInProfile(query);
     }
 }

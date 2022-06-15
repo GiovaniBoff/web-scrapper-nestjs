@@ -7,27 +7,38 @@ import { ScrapperQueryDto } from './dto/scrapper.dto';
 export class ScrapperService {
 
     private readonly googleUrl = `https://google.com/search?q=`
+    private readonly linkedInUrl = `https://www.linkedin.com/`
     private page !: Page;
 
-    async searchLinkedInProfile(query: ScrapperQueryDto): Promise<void> {
+    async searchLinkedInProfile(query: ScrapperQueryDto): Promise<any> {
         const browser: Browser = await puppeteer.launch({
             headless: false,
-            args: ['--headless'],
+            // args: ['--headless'],
         });
         this.page = await browser.newPage();
         await this.page.setViewport({ width: 1000, height: 926 })
 
+        await this.page.goto(this.linkedInUrl);
+
+        await this.page.type('#session_key', '');
+        await this.page.type('#session_password', '');
+
+        await this.page.click('.sign-in-form__submit-button');
+
+        await this.waitUntil(3000);
         const result = []
-        const googlinks = await this.openGoogle(query.queries);
-        for (let x = 0; x < googlinks.length; x++) {
+        const googlinks = await this.openGoogle(query.search);
+        // for (let x = 0; x < googlinks.length; x++) {
+        for (let x = 0; x < 1; x++) {
             const link = googlinks[x];
             console.log('[ ' + x + ' ] ' + link)
             const objprofile = await this.scrapLinkedin(link)
             objprofile['link'] = link;
             result.push(objprofile);
         }
-
         await browser.close();
+        console.log(result)
+        return result;
     }
 
 
@@ -56,7 +67,8 @@ export class ScrapperService {
     async scrapLinkedin(link) {
         await this.page.goto(link);
         await this.waitUntil(1000);
-        const objprofile = await this.page.evaluate(() => {
+        // await this.page.click('.pv-text-details__separator a')
+        const objprofile = await this.page.evaluate(async () => {
             const frameElem = document.querySelector(".ph5 .mt2");
 
             const nameElem = frameElem.querySelector('.pv-text-details__left-panel .text-heading-xlarge')
@@ -65,19 +77,34 @@ export class ScrapperService {
             const headlineElem = frameElem.querySelector('.pv-text-details__left-panel .text-body-medium');
             const headline = headlineElem.textContent.trim()
 
+            const formationList = document.querySelectorAll('pvs-list');
 
             const countryElem = frameElem.querySelector('.pb2 .text-body-small')
             const country = countryElem.textContent.trim();
-
+            // const emailElem = document.querySelector('#artdeco-modal-outlet .artdeco-modal__content .pv-profile-section .pv-profile-section__section-info .pv-contact-info__contact-type.ci-email .pv-contact-info__ci-container .pv-contact-info__contact-link')
+            // const email = emailElem.textContent.trim();
             const obj = {
                 name: name,
                 country: country,
                 headline: headline,
+                formation: Array.from(formationList),
+                email: ''
             }
             return obj;
         })
 
-        return objprofile;
+        // await this.page.goto(`${link}/overlay/contact-info`);
+
+        // await this.waitUntil(1000);
+        // const objprofileEmail = await this.page.evaluate(async () => {
+
+        //     const emailElem = document.querySelector('#artdeco-modal-outlet .artdeco-modal__content .pv-profile-section .pv-profile-section__section-info .pv-contact-info__contact-type.ci-email .pv-contact-info__ci-container .pv-contact-info__contact-link')
+        //     const email = emailElem.textContent.trim();
+
+        //     return email;
+        // })
+        // objprofile.email = objprofileEmail;
+        return objprofile
     }
 
     private parseQuery(queryString): string {
@@ -85,6 +112,7 @@ export class ScrapperService {
 
         return queryEnconded;
     }
+
 
     private waitUntil(time) {
         return new Promise((r) => setTimeout(r, time))
