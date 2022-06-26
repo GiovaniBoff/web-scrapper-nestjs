@@ -12,7 +12,7 @@ export class ScrapperService {
 
     async searchLinkedInProfile(query: ScrapperQueryDto): Promise<any> {
         const browser: Browser = await puppeteer.launch({
-            headless: false,
+            headless: true,
             // args: ['--headless'],
         });
         this.page = await browser.newPage();
@@ -20,8 +20,8 @@ export class ScrapperService {
 
         await this.page.goto(this.linkedInUrl);
 
-        await this.page.type('#session_key', '');
-        await this.page.type('#session_password', '');
+        await this.page.type('#session_key', query.username);
+        await this.page.type('#session_password', query.password);
 
         await this.page.click('.sign-in-form__submit-button');
 
@@ -37,7 +37,6 @@ export class ScrapperService {
             result.push(objprofile);
         }
         await browser.close();
-        console.log(result)
         return result;
     }
 
@@ -64,10 +63,9 @@ export class ScrapperService {
         return googleLinks;
     }
 
-    async scrapLinkedin(link) {
+    async scrapLinkedin(link: string) {
         await this.page.goto(link);
         await this.waitUntil(1000);
-        // await this.page.click('.pv-text-details__separator a')
         const objprofile = await this.page.evaluate(async () => {
             const frameElem = document.querySelector(".ph5 .mt2");
 
@@ -77,33 +75,32 @@ export class ScrapperService {
             const headlineElem = frameElem.querySelector('.pv-text-details__left-panel .text-body-medium');
             const headline = headlineElem.textContent.trim()
 
-            const formationList = document.querySelectorAll('pvs-list');
+            const formationList = Array.from(document.getElementById('education')
+                .nextElementSibling
+                .nextElementSibling
+                .getElementsByTagName('ul')[0]
+                .getElementsByTagName('li'))
+            const formations = formationList.map(formation =>
+                formation
+                    .outerText
+                    .replace(/\s+/g, ' ')
+                    .trim())
+
 
             const countryElem = frameElem.querySelector('.pb2 .text-body-small')
             const country = countryElem.textContent.trim();
-            // const emailElem = document.querySelector('#artdeco-modal-outlet .artdeco-modal__content .pv-profile-section .pv-profile-section__section-info .pv-contact-info__contact-type.ci-email .pv-contact-info__ci-container .pv-contact-info__contact-link')
-            // const email = emailElem.textContent.trim();
+
             const obj = {
                 name: name,
                 country: country,
                 headline: headline,
-                formation: Array.from(formationList),
+                formation: formations,
                 email: ''
             }
             return obj;
         })
-
-        // await this.page.goto(`${link}/overlay/contact-info`);
-
-        // await this.waitUntil(1000);
-        // const objprofileEmail = await this.page.evaluate(async () => {
-
-        //     const emailElem = document.querySelector('#artdeco-modal-outlet .artdeco-modal__content .pv-profile-section .pv-profile-section__section-info .pv-contact-info__contact-type.ci-email .pv-contact-info__ci-container .pv-contact-info__contact-link')
-        //     const email = emailElem.textContent.trim();
-
-        //     return email;
-        // })
-        // objprofile.email = objprofileEmail;
+        const emailProfile = await this.grabTheEmail(link);
+        objprofile.email = emailProfile
         return objprofile
     }
 
@@ -113,6 +110,23 @@ export class ScrapperService {
         return queryEnconded;
     }
 
+
+    async grabTheEmail(link: string) {
+        console.log(`grabTheEmail ======>${link}`);
+        const linkModal = `${link.replace('br', 'www')}/overlay/contact-info/`
+        console.log(`grabTheEmail linkModal ======>${linkModal}`);
+        await this.page.goto(linkModal);
+
+        await this.waitUntil(1000);
+        const profileEmail = await this.page.evaluate(async () => {
+
+            const emailElem = document.querySelector('#artdeco-modal-outlet .artdeco-modal__content .pv-profile-section .pv-profile-section__section-info .pv-contact-info__contact-type.ci-email .pv-contact-info__ci-container .pv-contact-info__contact-link')
+            const email = emailElem.textContent.trim();
+
+            return email;
+        })
+        return profileEmail;
+    }
 
     private waitUntil(time) {
         return new Promise((r) => setTimeout(r, time))
