@@ -28,8 +28,7 @@ export class ScrapperService {
         await this.waitUntil(3000);
         const result = []
         const googlinks = await this.openGoogle(query.search);
-        // for (let x = 0; x < googlinks.length; x++) {
-        for (let x = 0; x < 1; x++) {
+        for (let x = 0; x < googlinks.length; x++) {
             const link = googlinks[x];
             console.log('[ ' + x + ' ] ' + link)
             const objprofile = await this.scrapLinkedin(link)
@@ -84,7 +83,8 @@ export class ScrapperService {
                 formation
                     .outerText
                     .replace(/\s+/g, ' ')
-                    .trim())
+                    .trim()
+            )
 
 
             const countryElem = frameElem.querySelector('.pb2 .text-body-small')
