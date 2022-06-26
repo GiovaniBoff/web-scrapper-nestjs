@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ScrapperModule } from './scrapper/scrapper.module';
+import { LinkedPrivateApiModule } from './linked-private-api/linked-private-api.module';
 
 @Module({
-  imports: [ScrapperModule],
+  imports: [ScrapperModule, LinkedPrivateApiModule],
   controllers: [],
   providers: [],
 })
